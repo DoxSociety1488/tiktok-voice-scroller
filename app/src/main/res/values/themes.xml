@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.TikTokVoiceScroller" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">#FF00E676</item>
+        <item name="colorOnPrimary">#FF000000</item>
+        <item name="colorPrimaryContainer">#FF00C853</item>
+        <item name="colorSecondary">#FF69F0AE</item>
+        <item name="android:statusBarColor">#FF000000</item>
+        <item name="android:navigationBarColor">#FF000000</item>
+    </style>
+</resources>
