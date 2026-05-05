@@ -3,6 +3,8 @@ package com.tiktokscroller
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -16,12 +18,24 @@ class VoiceRecognitionManager(
 
     companion object {
         private const val TAG = "VoiceRecognition"
-        private const val RESTART_DELAY_MS = 300L
-        private val SKIP_KEYWORDS = setOf("skip", "skipped", "next", "escape")
+        private const val RESTART_DELAY_MS = 50L
+        private const val BUSY_RETRY_DELAY_MS = 200L
+
+        private val EXACT_KEYWORDS = setOf(
+            "skip", "skipped", "skipping", "skip it",
+            "next", "next one", "next video",
+            "escape", "scroll", "swipe"
+        )
+
+        private val FUZZY_PATTERNS = listOf(
+            "skip", "next", "escape", "scroll", "swipe", "скип"
+        )
     }
 
     private var speechRecognizer: SpeechRecognizer? = null
     private var isActive = false
+    private val handler = Handler(Looper.getMainLooper())
+    private var skipCooldown = false
 
     fun start() {
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
@@ -34,6 +48,7 @@ class VoiceRecognitionManager(
 
     fun stop() {
         isActive = false
+        handler.removeCallbacksAndMessages(null)
         speechRecognizer?.apply {
             stopListening()
             cancel()
@@ -58,14 +73,18 @@ class VoiceRecognitionManager(
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
             )
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
             putExtra(
                 RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS,
-                1000L
+                500L
             )
             putExtra(
                 RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS,
-                1500L
+                800L
+            )
+            putExtra(
+                RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS,
+                800L
             )
         }
 
@@ -74,7 +93,7 @@ class VoiceRecognitionManager(
             onListeningStateChanged(true)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start listening", e)
-            restartWithDelay()
+            restartWithDelay(RESTART_DELAY_MS)
         }
     }
 
@@ -112,12 +131,22 @@ class VoiceRecognitionManager(
                     else -> "Unknown error: $error"
                 }
                 Log.d(TAG, "Recognition error: $errorMsg")
-                restartWithDelay()
+
+                val delay = when (error) {
+                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> BUSY_RETRY_DELAY_MS
+                    SpeechRecognizer.ERROR_NO_MATCH,
+                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> RESTART_DELAY_MS
+                    SpeechRecognizer.ERROR_NETWORK,
+                    SpeechRecognizer.ERROR_NETWORK_TIMEOUT,
+                    SpeechRecognizer.ERROR_SERVER -> 1000L
+                    else -> RESTART_DELAY_MS
+                }
+                restartWithDelay(delay)
             }
 
             override fun onResults(results: Bundle?) {
                 processResults(results)
-                restartWithDelay()
+                restartWithDelay(RESTART_DELAY_MS)
             }
 
             override fun onPartialResults(partialResults: Bundle?) {
@@ -133,20 +162,42 @@ class VoiceRecognitionManager(
         if (matches.isNullOrEmpty()) return
 
         for (match in matches) {
-            val words = match.lowercase().split(" ")
-            if (words.any { it in SKIP_KEYWORDS }) {
-                Log.d(TAG, "Skip command detected in: \"$match\"")
-                onSkipDetected()
+            val text = match.lowercase().trim()
+            Log.d(TAG, "Heard: \"$text\"")
+
+            if (containsSkipCommand(text)) {
+                Log.d(TAG, "Skip command detected in: \"$text\"")
+                triggerSkip()
                 return
             }
         }
     }
 
-    private fun restartWithDelay() {
+    private fun containsSkipCommand(text: String): Boolean {
+        if (text in EXACT_KEYWORDS) return true
+
+        val words = text.split("\\s+".toRegex())
+        if (words.any { it in EXACT_KEYWORDS }) return true
+
+        for (pattern in FUZZY_PATTERNS) {
+            if (text.contains(pattern)) return true
+        }
+
+        return false
+    }
+
+    private fun triggerSkip() {
+        if (skipCooldown) return
+        skipCooldown = true
+        onSkipDetected()
+        handler.postDelayed({ skipCooldown = false }, 1000)
+    }
+
+    private fun restartWithDelay(delay: Long) {
         if (!isActive) return
         speechRecognizer?.cancel()
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+        handler.postDelayed({
             createAndStartRecognizer()
-        }, RESTART_DELAY_MS)
+        }, delay)
     }
 }
