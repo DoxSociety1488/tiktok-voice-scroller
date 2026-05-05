@@ -85,17 +85,18 @@ class VoiceRecognitionManager(
             putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf("en-US", "ru-RU"))
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
             putExtra(
                 RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS,
-                500L
+                200L
             )
             putExtra(
                 RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS,
-                800L
+                500L
             )
             putExtra(
                 RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS,
-                800L
+                500L
             )
         }
 
@@ -172,9 +173,12 @@ class VoiceRecognitionManager(
         val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
         if (matches.isNullOrEmpty()) return
 
-        for (match in matches) {
+        val confidences = results?.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)
+
+        for ((index, match) in matches.withIndex()) {
             val text = match.lowercase().trim()
-            Log.d(TAG, "Heard: \"$text\"")
+            val confidence = confidences?.getOrNull(index) ?: 0f
+            Log.d(TAG, "Heard: \"$text\" (confidence: $confidence)")
 
             if (containsSkipCommand(text)) {
                 Log.d(TAG, "Skip command detected in: \"$text\"")
