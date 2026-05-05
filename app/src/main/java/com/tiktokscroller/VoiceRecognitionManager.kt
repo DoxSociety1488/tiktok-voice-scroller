@@ -22,13 +22,21 @@ class VoiceRecognitionManager(
         private const val BUSY_RETRY_DELAY_MS = 200L
 
         private val EXACT_KEYWORDS = setOf(
+            // English
             "skip", "skipped", "skipping", "skip it",
             "next", "next one", "next video",
-            "escape", "scroll", "swipe"
+            "escape", "scroll", "swipe",
+            // Russian
+            "скип", "скипни", "скипай", "пропусти", "пропустить", "пропуск",
+            "дальше", "следующий", "следующее", "следующая", "следующий видос",
+            "далее", "листай", "листни", "свайп", "свайпни"
         )
 
         private val FUZZY_PATTERNS = listOf(
-            "skip", "next", "escape", "scroll", "swipe", "скип"
+            // English
+            "skip", "next", "escape", "scroll", "swipe",
+            // Russian
+            "скип", "пропус", "дальше", "следующ", "листа", "свайп", "далее"
         )
     }
 
@@ -72,6 +80,9 @@ class VoiceRecognitionManager(
                 RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
             )
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU")
+            putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, false)
+            putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf("en-US", "ru-RU"))
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
             putExtra(
