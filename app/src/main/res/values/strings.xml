@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TikTok Voice Scroller</string>
+    <string name="mic_indicator_desc">Microphone listening indicator</string>
+    <string name="accessibility_service_description">Enables voice-controlled scrolling for TikTok. When active, saying "skip" will swipe to the next video.</string>
+    <string name="subtitle_text">Say "skip" to scroll TikTok videos</string>
+    <string name="tip_text">Tip: The floating mic icon can be dragged anywhere on screen. Say "skip" or "next" while TikTok is open to scroll to the next video.</string>
+</resources>
